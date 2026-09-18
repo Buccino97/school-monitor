@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  body { width: 280px; font-family: system-ui, sans-serif; padding: 14px; }
+  input, button { width: 100%; margin-bottom: 8px; padding: 8px; box-sizing: border-box; font: inherit; }
+  button { cursor: pointer; }
+  #status { font-size: 13px; margin-bottom: 10px; }
+</style></head><body>
+  <h3 style="margin:0 0 10px">School Monitor Agent</h3>
+  <div id="status">Attivo - riconnessione automatica</div>
+  <input id="server" placeholder="URL server cloud">
+  <input id="room" placeholder="Codice aula" style="text-transform:uppercase">
+  <input id="name" placeholder="Il tuo nome">
+  <button id="save">Salva e riconnetti</button>
+  <button id="hand">Alza la mano</button>
+  <script src="popup.js"></script>
+</body></html>

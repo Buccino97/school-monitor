@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Monitor Cloud</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f1420; color: #e8ecf4; min-height: 100vh; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: #161d2e; border-bottom: 1px solid #26314a; flex-wrap: wrap; }
+  header h1 { font-size: 18px; }
+  .badge { background: #233150; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+  main { padding: 16px 20px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  input, button, textarea, select { font: inherit; border-radius: 8px; border: 1px solid #2c3a5c; background: #1a2236; color: #e8ecf4; padding: 8px 12px; }
+  button { cursor: pointer; } button:hover { background: #243154; }
+  button.primary { background: #2563eb; border-color: #2563eb; }
+  button.danger { background: #b91c1c; border-color: #b91c1c; }
+  button.success { background: #15803d; border-color: #15803d; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .card { background: #161d2e; border: 1px solid #26314a; border-radius: 12px; overflow: hidden; }
+  .card img { width: 100%; height: 165px; object-fit: cover; background: #0a0e18; cursor: pointer; }
+  .card .info { padding: 10px 12px; }
+  .card .name { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .card .meta { font-size: 12px; color: #93a2c0; margin-top: 4px; word-break: break-all; }
+  .card .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .card .actions button { padding: 4px 10px; font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .on { background: #22c55e; } .off { background: #64748b; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #233150; }
+  .tag.red { background: #7f1d1d; } .tag.yellow { background: #78350f; }
+  .panel { position: fixed; inset: auto 0 0 0; background: #161d2e; border-top: 1px solid #26314a; padding: 16px 20px; display: none; max-height: 55vh; overflow: auto; }
+  .panel.open { display: block; }
+  .panel h3 { margin-bottom: 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal.open { display: flex; }
+  .modal .inner { background: #161d2e; border-radius: 12px; padding: 20px; max-width: 920px; width: 95%; }
+  video { width: 100%; border-radius: 8px; background: #000; }
+  .listbox { display: flex; flex-direction: column; gap: 6px; }
+  .listbox .item { display: flex; justify-content: space-between; background: #1a2236; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+  #login { max-width: 420px; margin: 12vh auto; background: #161d2e; padding: 28px; border-radius: 14px; border: 1px solid #26314a; }
+  #login h2 { margin-bottom: 6px; } #login p { color: #93a2c0; font-size: 14px; margin-bottom: 16px; }
+  #login input { width: 100%; margin-bottom: 10px; }
+  ul#alerts { list-style: none; font-size: 13px; }
+  ul#alerts li { padding: 4px 0; border-bottom: 1px solid #212c47; }
+</style>
+</head>
+<body>
+<div id="login">
+  <h2>School Monitor Cloud</h2>
+  <p>Crea una nuova aula oppure inserisci codice e token per rientrare.</p>
+  <input id="roomCode" placeholder="Codice aula (es. XK4P2M)" style="text-transform:uppercase">
+  <input id="roomToken" placeholder="Token docente">
+  <button class="primary" style="width:100%" onclick="createRoom()">Crea nuova aula</button>
+  <button style="width:100%; margin-top:8px" onclick="joinRoom()">Entra con codice</button>
+</div>
+<div id="app" style="display:none">
+  <header>
+    <h1>School Monitor</h1>
+    <span class="badge">Aula: <b id="roomCodeLabel"></b></span>
+    <span class="badge" id="wsState">connesso</span>
+    <span class="badge" id="studentCount">0 studenti</span>
+    <span style="flex:1"></span>
+    <button onclick="showPanel('config')">Blocca siti</button>
+    <button onclick="showPanel('groups')">Gruppi</button>
+    <button onclick="showPanel('message')">Messaggio</button>
+    <button onclick="kioskAll()">Kiosk tutti</button>
+    <button class="danger" onclick="lockdownAll(true)">Blocca tutti</button>
+    <button class="success" onclick="lockdownAll(false)">Sblocca tutti</button>
+  </header>
+  <main>
+    <div class="grid" id="grid"></div>
+    <div style="margin-top:20px">
+      <h3 style="margin-bottom:8px">Registro violazioni</h3>
+      <ul id="alerts"></ul>
+    </div>
+  </main>
+  <div class="panel" id="panel-config">
+    <h3>Blocco siti (tutti gli studenti)</h3>
+    <div class="row">
+      <input id="cfgUrls" placeholder="domini separati da virgola: youtube.com, instagram.com" style="flex:1">
+      <button class="primary" onclick="saveConfig()">Salva e applica</button>
+      <button onclick="hidePanels()">Chiudi</button>
+    </div>
+  </div>
+  <div class="panel" id="panel-groups">
+    <h3>Gruppi</h3>
+    <div class="row">
+      <input id="groupName" placeholder="Nome gruppo">
+      <button class="primary" onclick="createGroup()">Crea gruppo</button>
+      <button onclick="hidePanels()">Chiudi</button>
+    </div>
+    <div id="groupsList" class="listbox"></div>
+  </div>
+  <div class="panel" id="panel-message">
+    <h3>Invia messaggio</h3>
+    <div class="row">
+      <input id="msgText" placeholder="Testo messaggio" style="flex:1">
+      <select id="msgTarget"><option value="all">Tutti</option></select>
+      <button class="primary" onclick="sendMessage()">Invia</button>
+      <button onclick="hidePanels()">Chiudi</button>
+    </div>
+  </div>
+  <div class="modal" id="modal">
+    <div class="inner">
+      <div class="row" style="justify-content:space-between">
+        <h3 id="modalName"></h3>
+        <div class="row">
+          <button id="liveBtn" onclick="toggleLive()">LIVE</button>
+          <button onclick="closeModal()">Chiudi</button>
+        </div>
+      </div>
+      <div id="modalShotWrap"><img id="modalShot" style="width:100%; border-radius:8px; background:#000"></div>
+      <div id="modalVideoWrap" style="display:none"><video id="modalVideo" autoplay muted></video></div>
+      <p id="modalInfo" style="margin-top:10px; color:#93a2c0; font-size:14px"></p>
+    </div>
+  </div>
+</div>
+<script>
+const API = location.origin;
+let ROOM = localStorage.getItem('sm_room') || '';
+let TOKEN = localStorage.getItem('sm_token') || '';
+let ws = null, wsTimer = null;
+const students = {};
+let currentDetail = null, liveOn = false;
+
+async function createRoom() {
+  const r = await fetch(API + '/api/room/create', { method: 'POST' });
+  const d = await r.json();
+  ROOM = d.code; TOKEN = d.teacherToken;
+  localStorage.setItem('sm_room', ROOM);
+  localStorage.setItem('sm_token', TOKEN);
+  enterApp(d.code);
+}
+async function joinRoom() {
+  ROOM = document.getElementById('roomCode').value.trim().toUpperCase();
+  TOKEN = document.getElementById('roomToken').value.trim();
+  const r = await fetch(API + '/api/room/' + ROOM + '/students', { headers: { 'X-Teacher-Token': TOKEN } });
+  if (!r.ok) return alert('Codice aula o token non validi');
+  localStorage.setItem('sm_room', ROOM);
+  localStorage.setItem('sm_token', TOKEN);
+  enterApp(ROOM);
+}
+function enterApp(code) {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('roomCodeLabel').textContent = code;
+  connectWS();
+  loadGroups();
+}
+function connectWS() {
+  if (ws) { try { ws.close(); } catch {} }
+  const url = location.origin.replace(/^http/, 'ws');
+  ws = new WebSocket(url);
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'teacher_auth', roomCode: ROOM, token: TOKEN }));
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === 'auth_failed') { alert('Autenticazione fallita'); location.reload(); return; }
+    if (m.type === 'auth_ok') {
+      m.students.forEach(s => { students[s.name] = Object.assign(students[s.name] || {}, s); });
+      renderGrid(); updateCounters(); refreshGroupsUI();
+      return;
+    }
+    students[m.name] = students[m.name] || {};
+    const s = students[m.name];
+    s.name = m.name;
+    switch (m.type) {
+      case 'student_connected': s.online = true; break;
+      case 'student_disconnected': s.online = false; s.live = false; break;
+      case 'status':
+        s.online = true; s.window = m.window; s.process = m.process; s.violations = m.violations || [];
+        if (currentDetail === m.name) updateModalInfo();
+        break;
+      case 'screenshot': s.screenshot = m.image; break;
+      case 'hand_raised': s.handRaised = true; break;
+      case 'hand_lowered': s.handRaised = false; break;
+      case 'alert':
+        s.violations = [...(s.violations || []), m.url].slice(-10);
+        addAlert(m.name + ' ha tentato di aprire ' + m.url);
+        break;
+      case 'videoChunk': if (liveOn && currentDetail === m.name) feedVideo(m); break;
+      case 'student_removed': delete students[m.name]; break;
+      case 'student_renamed': students[m.newName] = students[m.oldName]; delete students[m.oldName]; break;
+    }
+    renderGrid(); updateCounters();
+  };
+  ws.onclose = () => {
+    document.getElementById('wsState').textContent = 'disconnesso';
+    wsTimer = setTimeout(connectWS, 3000);
+  };
+  ws.onerror = () => ws.close();
+}
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const names = Object.keys(students);
+  if (!names.length) { grid.innerHTML = '<p style="color:#93a2c0">In attesa di studenti... Comunicagli il codice aula <b>' + ROOM + '</b>.</p>'; return; }
+  const blank = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  grid.innerHTML = names.map(n => {
+    const s = students[n];
+    return '<div class="card">' +
+      '<img src="' + (s.screenshot ? 'data:image/jpeg;base64,' + s.screenshot : blank) + '" onclick="openDetail(\'' + esc(n) + '\')">' +
+      '<div class="info"><div class="name"><span class="dot ' + (s.online ? 'on' : 'off') + '"></span> ' + esc(n) +
+      (s.handRaised ? ' <span class="tag yellow">mano alzata</span>' : '') +
+      (s.lockdown ? ' <span class="tag red">bloccato</span>' : '') +
+      (s.live ? ' <span class="tag red">LIVE</span>' : '') +
+      (s.violations && s.violations.length ? ' <span class="tag yellow">!' + s.violations.length + '</span>' : '') +
+      '</div><div class="meta">' + esc(s.window || '-') + '</div>' +
+      '<div class="actions">' +
+      '<button onclick="lockOne(\'' + esc(n) + '\',true)">Blocca</button>' +
+      '<button onclick="lockOne(\'' + esc(n) + '\',false)">Sblocca</button>' +
+      '<button onclick="kioskOne(\'' + esc(n) + '\')">Kiosk</button>' +
+      '<button onclick="renameStudent(\'' + esc(n) + '\')">Rinomina</button>' +
+      '<button onclick="lowerHand(\'' + esc(n) + '\')">Abbassa mano</button>' +
+      '<button onclick="removeStudent(\'' + esc(n) + '\')">Rimuovi</button>' +
+      '</div></div></div>';
+  }).join('');
+}
+function updateCounters() {
+  document.getElementById('studentCount').textContent = Object.keys(students).length + ' studenti';
+}
+async function api(path, body, method) {
+  const r = await fetch(API + '/api/room/' + ROOM + path, {
+    method: method || 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Teacher-Token': TOKEN },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return r.json();
+}
+function lockdownAll(a) { api('/lockdown', { target: 'all', active: a }); }
+function lockOne(n, a) { api('/lockdown', { target: n, active: a }); }
+function kioskAll() {
+  const url = prompt('URL da forzare su tutti gli studenti (vuoto per disattivare):');
+  if (url === null) return;
+  api('/kiosk', { target: 'all', active: !!url, url });
+}
+function kioskOne(n) {
+  const url = prompt('URL kiosk per ' + n + ' (vuoto per disattivare):');
+  if (url === null) return;
+  api('/kiosk', { target: n, active: !!url, url });
+}
+function lowerHand(n) { api('/lower_hand', { target: n }); }
+async function renameStudent(n) {
+  const nn = prompt('Nuovo nome per ' + n + ':');
+  if (!nn || nn === n) return;
+  await api('/rename', { oldName: n, newName: nn });
+  students[nn] = students[n]; delete students[n]; renderGrid();
+}
+async function removeStudent(n) {
+  if (!confirm('Rimuovere ' + n + '? Solo se offline.')) return;
+  const r = await api('/students/' + encodeURIComponent(n), null, 'DELETE');
+  if (r.error) alert(r.error); else { delete students[n]; renderGrid(); }
+}
+async function saveConfig() {
+  const urls = document.getElementById('cfgUrls').value.split(',').map(s => s.trim()).filter(Boolean);
+  await api('/config', { target: 'all', blocked_urls: urls, blocked_apps: [] });
+  hidePanels();
+}
+let groups = [];
+async function loadGroups() {
+  const r = await fetch(API + '/api/room/' + ROOM + '/groups', { headers: { 'X-Teacher-Token': TOKEN } });
+  if (r.ok) { groups = await r.json(); refreshGroupsUI(); }
+}
+async function createGroup() {
+  const name = document.getElementById('groupName').value.trim();
+  if (!name) return;
+  groups.push({ name, members: [] });
+  await api('/groups', { groups });
+  refreshGroupsUI();
+}
+function refreshGroupsUI() {
+  const sel = document.getElementById('msgTarget');
+  sel.innerHTML = '<option value="all">Tutti</option>' +
+    groups.map(g => '<option value="' + esc(g.name) + '">Gruppo: ' + esc(g.name) + '</option>').join('') +
+    Object.keys(students).map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  const gl = document.getElementById('groupsList');
+  gl.innerHTML = groups.map((g, gi) => '<div class="item"><span><b>' + esc(g.name) + '</b> - ' +
+    (g.members.length ? esc(g.members.join(', ')) : 'nessun membro') + '</span><span>' +
+    '<button onclick="addMember(' + gi + ')">Aggiungi</button>' +
+    '<button onclick="groupLock(' + gi + ',true)">Blocca</button>' +
+    '<button onclick="groupLock(' + gi + ',false)">Sblocca</button>' +
+    '<button onclick="delGroup(' + gi + ')">Elimina</button></span></div>').join('');
+}
+async function persistGroups() { await api('/groups', { groups }); }
+async function addMember(gi) {
+  const n = prompt('Nome studente da aggiungere a ' + groups[gi].name + ':');
+  if (!n) return;
+  groups[gi].members.push(n);
+  await persistGroups(); refreshGroupsUI();
+}
+async function groupLock(gi, active) {
+  await api('/groups/action', { groupName: groups[gi].name, action: 'lockdown', payload: { active } });
+}
+async function delGroup(gi) {
+  groups.splice(gi, 1);
+  await persistGroups(); refreshGroupsUI();
+}
+function sendMessage() {
+  const text = document.getElementById('msgText').value.trim();
+  const target = document.getElementById('msgTarget').value;
+  if (!text) return;
+  if (target === 'all') { api('/message', { target: 'all', text }); }
+  else {
+    const g = groups.find(x => x.name === target);
+    if (g) g.members.forEach(n => api('/message', { target: n, text }));
+    else api('/message', { target, text });
+  }
+  hidePanels();
+}
+function openDetail(n) {
+  currentDetail = n;
+  document.getElementById('modalName').textContent = n;
+  updateModalInfo();
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modalShot').src = students[n].screenshot ? 'data:image/jpeg;base64,' + students[n].screenshot : '';
+}
+function updateModalInfo() {
+  const s = students[currentDetail];
+  if (!s) return;
+  document.getElementById('modalInfo').textContent =
+    'Finestra: ' + (s.window || '-') + ' | Violazioni: ' + ((s.violations || []).join(', ') || 'nessuna') + ' | Bloccato: ' + (s.lockdown ? 'SI' : 'no');
+}
+function closeModal() {
+  if (liveOn) toggleLive();
+  currentDetail = null;
+  document.getElementById('modal').classList.remove('open');
+}
+async function toggleLive() {
+  if (!currentDetail) return;
+  liveOn = !liveOn;
+  document.getElementById('liveBtn').textContent = liveOn ? 'STOP' : 'LIVE';
+  document.getElementById('modalShotWrap').style.display = liveOn ? 'none' : 'block';
+  document.getElementById('modalVideoWrap').style.display = liveOn ? 'block' : 'none';
+  await api('/live', { target: currentDetail, active: liveOn, fps: 5 });
+  if (liveOn) setupMediaSource();
+}
+let mediaSource = null, sourceBuffer = null, queue = [];
+function setupMediaSource() {
+  queue = [];
+  const video = document.getElementById('modalVideo');
+  mediaSource = new MediaSource();
+  mediaSource.addEventListener('sourceopen', () => {
+    try {
+      sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
+      sourceBuffer.addEventListener('updateend', pumpQueue);
+    } catch { sourceBuffer = mediaSource.addSourceBuffer('video/webm'); }
+  });
+  video.src = URL.createObjectURL(mediaSource);
+}
+function pumpQueue() {
+  if (!sourceBuffer || !queue.length || sourceBuffer.updating) return;
+  try {
+    if (sourceBuffer.buffered.length && sourceBuffer.buffered.end(0) - sourceBuffer.buffered.start(0) > 30)
+      sourceBuffer.remove(0, sourceBuffer.buffered.start(0) + 10);
+    sourceBuffer.appendBuffer(queue.shift());
+  } catch {}
+}
+function feedVideo(m) {
+  if (!mediaSource || mediaSource.readyState !== 'open') return;
+  fetch('data:' + (m.mime || 'video/webm') + ';base64,' + m.chunk)
+    .then(r => r.arrayBuffer())
+    .then(buf => { queue.push(buf); pumpQueue(); });
+}
+function showPanel(id) { hidePanels(); document.getElementById('panel-' + id).classList.add('open'); }
+function hidePanels() { document.querySelectorAll('.panel').forEach(p => p.classList.remove('open')); }
+function addAlert(t) {
+  const li = document.createElement('li');
+  li.textContent = new Date().toLocaleTimeString() + ' - ' + t;
+  document.getElementById('alerts').prepend(li);
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+if (ROOM && TOKEN) enterApp(ROOM);
+</script>
+</body>
+</html>

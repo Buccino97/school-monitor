@@ -1,0 +1,7 @@
+SCHOOL MONITOR CLOUD
+server.js            = il server (gira nel cloud, non sul tuo PC)
+package.json         = istruzioni per Node.js
+render.yaml          = configurazione per Render
+public/index.html    = dashboard del docente
+public/installa.html = pagina di collegamento per gli studenti
+public/extension/    = estensione Chrome per i PC studenti

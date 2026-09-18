@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Collega questo PC</title>
+<style>
+ body{font-family:system-ui,sans-serif;background:#0f1420;color:#e8ecf4;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+ .box{background:#161d2e;border:1px solid #26314a;border-radius:16px;padding:32px;max-width:520px}
+ h1{font-size:22px;margin:0 0 12px}
+ .step{margin:16px 0;padding:16px;background:#1a2236;border-radius:12px}
+ .num{display:inline-block;width:26px;height:26px;background:#2563eb;border-radius:50%;line-height:26px;text-align:center;font-weight:700;margin-right:8px}
+ a.btn{display:inline-block;margin-top:8px;padding:12px 22px;background:#22c55e;color:#06210f;border-radius:10px;text-decoration:none;font-weight:700;font-size:17px}
+ input{padding:10px;border-radius:8px;border:1px solid #2c3a5c;background:#0f1420;color:#fff;font:inherit;font-size:20px;text-transform:uppercase;width:170px;letter-spacing:3px}
+ #ok{display:none;margin-top:14px;padding:12px;background:#14532d;border-radius:10px;font-weight:600}
+</style></head><body>
+<div class="box">
+ <h1>Collega questo PC alla lezione</h1>
+ <div class="step"><span class="num">0</span> Scrivi il codice aula del prof:<br><br>
+   <input id="aula" maxlength="6" placeholder="XK4P2M"></div>
+ <div class="step"><span class="num">1</span> Scarica il collegamento:<br>
+   <a class="btn" href="/installa-studenti.bat" download>SCARICA</a><br>
+   <small style="color:#93a2c0">Apri il file scaricato, doppio click, poi "SI"</small></div>
+ <div class="step"><span class="num">2</span> Attendi un minuto: Chrome collega questo PC da solo.</div>
+ <div id="ok">COLLEGATO! Il prof ora vede questo computer.</div>
+</div>
+<script>
+const aula=document.getElementById('aula');
+aula.value=localStorage.getItem('aula')||'';
+aula.oninput=()=>{localStorage.setItem('aula',aula.value.toUpperCase());
+ document.documentElement.dataset.room=aula.value.toUpperCase();};
+if(aula.value)document.documentElement.dataset.room=aula.value;
+setInterval(()=>{if(document.documentElement.getAttribute('sm-ready'))
+ document.getElementById('ok').style.display='block';},1500);
+</script>
+</body></html>

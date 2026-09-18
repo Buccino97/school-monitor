@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"><style>
+  body { display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:system-ui,sans-serif; background:#1a1a2e; color:#eee; text-align:center; margin:0 }
+</style></head>
+<body><div>
+  <div style="font-size:64px">Blocked</div>
+  <h1>Sito Bloccato</h1>
+  <p id="site" style="font-size:20px;color:#f87171"></p>
+  <p>Questo sito e stato bloccato dal professore.<br>Non puoi accedere a questa pagina durante la lezione.</p>
+</div>
+<script>document.getElementById('site').textContent = new URLSearchParams(location.search).get('site') || '';</script>
+</body></html>
