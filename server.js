@@ -16,8 +16,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', '*');
   next();
 });
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(express.static(__dirname));
 const rooms = new Map();
 
 function newCode(len = 6) {
